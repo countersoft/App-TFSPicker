@@ -651,7 +651,24 @@ namespace TFSPicker
                     try
                     {
                         string url;
-                        
+
+                        UserWidgetDataDetails loginDetails = tfsPicker.getLoginDetails();
+
+                        if (Username.IsEmpty())
+                        {
+                            Username = loginDetails.Username;
+                        }
+
+                        if (Password.IsEmpty())
+                        {
+                            Password = loginDetails.Password;
+                        }
+
+                        if (RepositoryUrl.IsEmpty())
+                        {
+                            RepositoryUrl = loginDetails.RepositoryUrl;
+                        }
+
                         var item = GetItem(tfs, out url);
                         
                         if (item != null)
