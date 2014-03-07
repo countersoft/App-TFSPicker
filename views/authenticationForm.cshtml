@@ -1,0 +1,55 @@
+﻿@using System.Web.Mvc.Html;
+@using System.Linq;
+@using Countersoft.Gemini.Models;
+@using Countersoft.Gemini;
+@using System.Linq
+
+    <div id="app-tfspicker">
+        @if (Countersoft.Gemini.GeminiApp.LicenseSummary.IsGeminiTrial() || Countersoft.Gemini.GeminiApp.GeminiLicense.IsFree)
+        {
+            <div class="clearfix"></div>
+            <div>
+                <img src="~/assets/images/empty-state/no-tfspicker.png" />
+            </div>
+        }
+        <div class="margin-top-20">
+            <div id="app-tfspicker-error" class="error"></div>
+            <form id='authentication_form' action='@Model.Value' method='post'>
+                <input type='text' class='margin-bottom-5' name='username' placeholder='Username' id='username' /><br />
+                <input type='password' class='margin-bottom-5' name='password' placeholder='Password' id='password' /><br />
+                <input type='text' class='margin-bottom-5' name='repositoryURL' placeholder='Server URL' id='repositoryURL' /> <br />
+                <input type='button' class='button-primary button-small' name='tfs_login' id='tfs_login' value='Login' />
+            </form>
+        </div>
+    </div>
+
+<script type="text/javascript">
+    //Authentication form
+    $(document).off('click', "#app-tfspicker #authentication_form #tfs_login").on('click', "#app-tfspicker #authentication_form #tfs_login", function (e) {
+        gemini_ui.startBusy('#app-tfspicker #authentication_form #tfs_login');
+        var url = $(this).parents("form:eq(0)").attr('action');
+
+        if ($(this).parent().find('#username').val() != '' && $(this).parent().find('#password').val() != '') {
+
+            gemini_ajax.postCall(url, "",
+                function (response) {
+                    if (response.Result.Data.success) {
+                        //$('#app-tfspicker').html(response.Result.Data.data);
+                        gemini_item.getAppControlValue(@Model.Key, '782D003D-D9F0-455F-AF09-74417D6DFD2B', '061F1F58-35BC-4509-83FC-CCC996ED4F36', 'login');
+                    }
+                    else {
+                        $('#app-tfspicker-error').text(response.Result.Data.message);
+                        $('#app-tfspicker-error').show();
+                    }
+                    gemini_ui.stopBusy('#app-tfspicker #authentication_form #tfs_login');
+                }, 
+                function (xhr, ajaxOptions, thrownError) {
+                    gemini_ui.stopBusy('#app-tfspicker #authentication_form #tfs_login');
+                },  $(this).parents("form:eq(0)").serialize(), null, true);
+        }
+
+    });
+
+    if ($('#app-tfspicker-error').text() == '') $('#app-tfspicker-error').hide();
+    //# sourceURL=tfsAuthentication.js
+</script>
