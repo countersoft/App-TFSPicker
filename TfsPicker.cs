@@ -47,6 +47,17 @@ namespace TFSPicker
         private string RepositoryUrl { get; set; }
         public static bool IsBasicAuth { get; set; }
 
+        static TFSPicker()
+        {
+            try
+            {
+                IsBasicAuth = System.Configuration.ConfigurationManager.AppSettings["gemini.tfs.basicauth"].ToBool();
+            }
+            catch
+            {
+            }
+        }
+
         public TFSPicker()
         {
             try
@@ -732,7 +743,7 @@ namespace TFSPicker
             
             configurationServer.Credentials = iCred;
             
-            if (IsBasicAuth)
+            if (TFSPicker.IsBasicAuth)
             {
                 configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
             }
@@ -751,7 +762,7 @@ namespace TFSPicker
             {
                 TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(new Uri(string.Concat(RepositoryUrl, '/', tpcNode.Resource.DisplayName)), iCred);
             
-                if (IsBasicAuth) tpc.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+                if (TFSPicker.IsBasicAuth) tpc.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
 
                 WorkItemStore workItemStore = (WorkItemStore)tpc.GetService(typeof(WorkItemStore));
 
