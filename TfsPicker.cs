@@ -193,7 +193,7 @@ namespace TFSPicker
 
             if (!_validLicense)
             {
-                _validLicense = !GeminiApp.LicenseSummary.IsFree;//new Countersoft.Gemini.Infrastructure.LicenseManager().HasValidLicense(AppId, false);
+                _validLicense = !GeminiApp.LicenseSummary.IsFree || GeminiApp.LicenseSummary.IsGeminiTrial();
                 
                 if (!_validLicense)
                 {
