@@ -352,146 +352,166 @@ namespace TFSPicker
                 ItemWidgetArguments args = new ItemWidgetArguments(UserContext, GeminiContext, Cache, System.Web.HttpContext.Current.Request, CurrentIssue);
 
                 TFSPicker tfsPicker = new TFSPicker();
-                
+
                 tfsPicker.AuthenticateUser(args);
-                
+
                 UserWidgetDataDetails loginDetails = tfsPicker.getLoginDetails();
 
                 TFSPicker.ConnectByImplementingCredentialsProvider connect = new TFSPicker.ConnectByImplementingCredentialsProvider();
-                
+
                 ICredentials iCred = new NetworkCredential(loginDetails.Username, loginDetails.Password);
-                
+
                 connect.setLoginDetails(loginDetails.Username, loginDetails.Password, loginDetails.RepositoryUrl);
-                
+
                 connect.GetCredentials(new Uri(loginDetails.RepositoryUrl), iCred);
 
                 TfsConfigurationServer configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(loginDetails.RepositoryUrl));
-                
-                configurationServer.Credentials = iCred;
-                
-                if (TFSPicker.IsBasicAuth)
-                {
-                    configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
-                }
-                else
-                {
-                    configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
-                }
-                
-                configurationServer.EnsureAuthenticated();
 
-                CatalogNode catalogNode = configurationServer.CatalogNode;
+                    configurationServer.Credentials = iCred;
 
-                ReadOnlyCollection<CatalogNode> tpcNodes = catalogNode.QueryChildren(new Guid[] { CatalogResourceTypes.ProjectCollection }, false, CatalogQueryOptions.None);
-                
-                string url = string.Empty;
-                
-                List<WorkItem2> queryResults = new List<WorkItem2>();
-
-                TfsTeamProjectCollection tpc = null;
-
-                string query = "Select [Id], [Work Item Type], [Title], [State] From WorkItems Where [Title] Contains '" + search + "' Order By [Id] Asc";
-                
-                if (search.Trim().Length == 0)
-                {
-                    query = "Select [Id], [Work Item Type], [Title], [Description] From WorkItems Order By [Id] Asc";
-                }
-
-                foreach (CatalogNode tpcNode in tpcNodes)
-                {
-                    tpc = new TfsTeamProjectCollection(new Uri(string.Concat(loginDetails.RepositoryUrl, '/', tpcNode.Resource.DisplayName)), iCred);
-                    
-                    if (TFSPicker.IsBasicAuth) tpc.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
-                    
-                    WorkItemStore workItemStore = (WorkItemStore)tpc.GetService(typeof(WorkItemStore));
-                    
-                    var result = workItemStore.Query(query);
-                    
-                    if (result != null)
+                    if (TFSPicker.IsBasicAuth)
                     {
-                        TswaClientHyperlinkService hyperlinkService = null;
-                        
-                        try
-                        {
-                            hyperlinkService = ((TswaClientHyperlinkService)tpc.GetService(typeof(TswaClientHyperlinkService)));
-                        }
-                        catch
-                        {
-                        }
+                        configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+                    }
+                    else
+                    {
+                        configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
+                    }
 
-                        foreach (WorkItem res in result)
+                    try
+                    {
+                        configurationServer.EnsureAuthenticated();
+                    }
+                    catch
+                    {
+                        System.Threading.Thread.Sleep(1000);
+                        configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(loginDetails.RepositoryUrl));
+                        configurationServer.Credentials = iCred;
+
+                        if (TFSPicker.IsBasicAuth)
                         {
-                            WorkItem2 item = new WorkItem2() { Item = res, BaseUrl = string.Concat(tpcNode.Resource.DisplayName, '/', res.AreaPath) };
-                            
+                            configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+                        }
+                        else
+                        {
+                            configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
+                        }
+                        configurationServer.EnsureAuthenticated();
+                    }
+
+                    CatalogNode catalogNode = configurationServer.CatalogNode;
+
+                    ReadOnlyCollection<CatalogNode> tpcNodes = catalogNode.QueryChildren(new Guid[] { CatalogResourceTypes.ProjectCollection }, false, CatalogQueryOptions.None);
+
+                    string url = string.Empty;
+
+                    List<WorkItem2> queryResults = new List<WorkItem2>();
+
+                    TfsTeamProjectCollection tpc = null;
+
+                    string query = "Select [Id], [Work Item Type], [Title], [State] From WorkItems Where [Title] Contains '" + search + "' Order By [Id] Asc";
+
+                    if (search.Trim().Length == 0)
+                    {
+                        query = "Select [Id], [Work Item Type], [Title], [Description] From WorkItems Order By [Id] Asc";
+                    }
+
+                    foreach (CatalogNode tpcNode in tpcNodes)
+                    {
+                        tpc = configurationServer.GetTeamProjectCollection(new Guid(tpcNode.Resource.Properties["InstanceId"]));
+                        //tpc = new TfsTeamProjectCollection(new Uri(string.Concat(loginDetails.RepositoryUrl, '/', tpcNode.Resource.DisplayName)), iCred);
+
+                        if (TFSPicker.IsBasicAuth) tpc.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+
+                        WorkItemStore workItemStore = (WorkItemStore)tpc.GetService(typeof(WorkItemStore));
+
+                        var result = workItemStore.Query(query);
+
+                        if (result != null)
+                        {
+                            TswaClientHyperlinkService hyperlinkService = null;
+
                             try
                             {
-                                if (hyperlinkService != null)
-                                {
-                                    item.FullUrl = hyperlinkService.GetWorkItemEditorUrl(res.Id);
-                                }
+                                hyperlinkService = ((TswaClientHyperlinkService)tpc.GetService(typeof(TswaClientHyperlinkService)));
                             }
                             catch
                             {
                             }
 
-                            queryResults.Add(item);
+                            foreach (WorkItem res in result)
+                            {
+                                WorkItem2 item = new WorkItem2() { Item = res, BaseUrl = string.Concat(tpcNode.Resource.DisplayName, '/', res.AreaPath) };
+
+                                try
+                                {
+                                    if (hyperlinkService != null)
+                                    {
+                                        item.FullUrl = hyperlinkService.GetWorkItemEditorUrl(res.Id);
+                                    }
+                                }
+                                catch
+                                {
+                                }
+
+                                queryResults.Add(item);
+                            }
                         }
                     }
-                }
 
-                Dictionary<string, WorkItem> details = new Dictionary<string, WorkItem>();
+                    Dictionary<string, WorkItem> details = new Dictionary<string, WorkItem>();
 
-                if (queryResults.Count > 0)
-                {
-                    IssueWidgetData<List<string>> data = GeminiContext.IssueWidgetStore.Get<List<string>>(id.ToInt(), Constants.AppId, Constants.ControlId);
-                    
-                    if (data == null || data.Value == null)
+                    if (queryResults.Count > 0)
                     {
-                        data = new IssueWidgetData<List<string>>();
-                        
-                        data.AppId = Constants.AppId;
-                        
-                        data.ControlId = Constants.ControlId;
-                        
-                        data.IssueId = id.ToInt();
-                        
-                        data.Value = new List<string>();
-                    }
+                        IssueWidgetData<List<string>> data = GeminiContext.IssueWidgetStore.Get<List<string>>(id.ToInt(), Constants.AppId, Constants.ControlId);
 
-                    foreach (WorkItem2 item in queryResults)
-                    {
-                        //check if we are not already there!
-                        if (data.Value.Contains(item.Item.Id.ToString())) continue;
+                        if (data == null || data.Value == null)
+                        {
+                            data = new IssueWidgetData<List<string>>();
 
-                        /*if (isTfs2012)
-                        {*/
-                        if (item.FullUrl != null && item.FullUrl.ToString().HasValue())
-                        {
-                            url = item.FullUrl.ToString();
-                        }
-                        else
-                        {
-                            url = string.Format("{0}/{1}/_workitems#_a=edit&id={2}", loginDetails.RepositoryUrl, item.BaseUrl, item.Item.Id);
+                            data.AppId = Constants.AppId;
+
+                            data.ControlId = Constants.ControlId;
+
+                            data.IssueId = id.ToInt();
+
+                            data.Value = new List<string>();
                         }
 
-                        details.Add(url, item.Item);
+                        foreach (WorkItem2 item in queryResults)
+                        {
+                            //check if we are not already there!
+                            if (data.Value.Contains(item.Item.Id.ToString())) continue;
+
+                            /*if (isTfs2012)
+                            {*/
+                            if (item.FullUrl != null && item.FullUrl.ToString().HasValue())
+                            {
+                                url = item.FullUrl.ToString();
+                            }
+                            else
+                            {
+                                url = string.Format("{0}/{1}/_workitems#_a=edit&id={2}", loginDetails.RepositoryUrl, item.BaseUrl, item.Item.Id);
+                            }
+
+                            details.Add(url, item.Item);
+                        }
                     }
-                }
-                
-                Dictionary<string, TfsPickerItem> tfsPickerModel = ConvertWorkItemsToTfsPickerItems(details);
-                
-                dataView = Content(BaseController.RenderPartialViewToString(this, AppManager.Instance.GetAppUrl("782D003D-D9F0-455F-AF09-74417D6DFD2B", "views/search.cshtml"), tfsPickerModel));
+
+                    Dictionary<string, TfsPickerItem> tfsPickerModel = ConvertWorkItemsToTfsPickerItems(details);
+
+                    dataView = Content(BaseController.RenderPartialViewToString(this, AppManager.Instance.GetAppUrl("782D003D-D9F0-455F-AF09-74417D6DFD2B", "views/search.cshtml"), tfsPickerModel));
             }
             catch (Exception ex)
             {
                 Pair<int, string> authenticationModel = new Pair<int, string>(CurrentIssue.Entity.Id, string.Concat(UserContext.Url, "/apps/tfspicker/authenticate/", CurrentIssue.Entity.Id));
 
                 dataView = Content(BaseController.RenderPartialViewToString(this, AppManager.Instance.GetAppUrl("782D003D-D9F0-455F-AF09-74417D6DFD2B", "views/authenticationForm.cshtml"), authenticationModel));
-                
+
                 successView = false;
-                
+
                 messageView = ex.Message;
-                
+
                 GeminiApp.LogException(new Exception(ex.Message) { Source = "TFS Picker" }, false);
             }
 
@@ -596,23 +616,24 @@ namespace TFSPicker
                 try
                 {
                     ItemWidgetArguments args = new ItemWidgetArguments(UserContext, GeminiContext, Cache, System.Web.HttpContext.Current.Request, CurrentIssue);
-                    
+
                     tfsPicker.AuthenticateUser(args);
-                    
+
                     UserWidgetDataDetails loginDetails = tfsPicker.getLoginDetails();
 
                     TFSPicker.ConnectByImplementingCredentialsProvider connect = new TFSPicker.ConnectByImplementingCredentialsProvider();
-                    
+
                     ICredentials iCred = new NetworkCredential(loginDetails.Username, loginDetails.Password);
-                    
+
                     connect.setLoginDetails(loginDetails.Username, loginDetails.Password, loginDetails.RepositoryUrl);
-                    
+
                     connect.GetCredentials(new Uri(loginDetails.RepositoryUrl), iCred);
 
                     TfsConfigurationServer configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(loginDetails.RepositoryUrl));
-                    
+
+
                     configurationServer.Credentials = iCred;
-                    
+
                     if (TFSPicker.IsBasicAuth)
                     {
                         configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
@@ -621,24 +642,43 @@ namespace TFSPicker
                     {
                         configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
                     }
-                    
-                    configurationServer.EnsureAuthenticated();
+
+                    try
+                    {
+                        configurationServer.EnsureAuthenticated();
+                    }
+                    catch
+                    {
+                        System.Threading.Thread.Sleep(1000);
+                        configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(loginDetails.RepositoryUrl));
+                        configurationServer.Credentials = iCred;
+
+                        if (TFSPicker.IsBasicAuth)
+                        {
+                            configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+                        }
+                        else
+                        {
+                            configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
+                        }
+                        configurationServer.EnsureAuthenticated();
+                    }
                 }
                 catch (Exception ex)
                 {
                     var logindetails = GeminiContext.UserWidgetStore.Get<UserWidgetDataDetails>(CurrentUser.Entity.Id, Constants.AppId, Constants.ControlId);
-                    
+
                     if (logindetails != null)
                     {
                         GeminiContext.UserWidgetStore.Delete(logindetails.Id);
                     }
-                    
+
                     success = false;
-                    
+
                     message = ex.Message;
-                    
+
                     GeminiApp.LogException(new Exception(ex.Message) { Source = "TFS Picker" }, false);
-                    
+
                     return JsonSuccess(new { success = success, message = message });
                 }
 
@@ -734,15 +774,16 @@ namespace TFSPicker
             TFSPicker.ConnectByImplementingCredentialsProvider connect = new TFSPicker.ConnectByImplementingCredentialsProvider();
 
             ICredentials iCred = new NetworkCredential(Username, Password);
-            
+
             connect.setLoginDetails(Username, Password, RepositoryUrl);
-            
+
             connect.GetCredentials(new Uri(RepositoryUrl), iCred);
 
             TfsConfigurationServer configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(RepositoryUrl));
-            
+
+
             configurationServer.Credentials = iCred;
-            
+
             if (TFSPicker.IsBasicAuth)
             {
                 configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
@@ -751,8 +792,27 @@ namespace TFSPicker
             {
                 configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
             }
-            
-            configurationServer.EnsureAuthenticated();
+
+            try
+            {
+                configurationServer.EnsureAuthenticated();
+            }
+            catch
+            {
+                System.Threading.Thread.Sleep(1000);
+                configurationServer = TfsConfigurationServerFactory.GetConfigurationServer(new Uri(RepositoryUrl));
+                configurationServer.Credentials = iCred;
+
+                if (TFSPicker.IsBasicAuth)
+                {
+                    configurationServer.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
+                }
+                else
+                {
+                    configurationServer.ClientCredentials = new TfsClientCredentials(new WindowsCredential(iCred));
+                }
+                configurationServer.EnsureAuthenticated();
+            }
 
             CatalogNode catalogNode = configurationServer.CatalogNode;
 
@@ -760,8 +820,9 @@ namespace TFSPicker
 
             foreach (CatalogNode tpcNode in tpcNodes)
             {
-                TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(new Uri(string.Concat(RepositoryUrl, '/', tpcNode.Resource.DisplayName)), iCred);
-            
+                TfsTeamProjectCollection tpc = configurationServer.GetTeamProjectCollection(new Guid(tpcNode.Resource.Properties["InstanceId"]));
+                //TfsTeamProjectCollection tpc = new TfsTeamProjectCollection(new Uri(string.Concat(RepositoryUrl, '/', tpcNode.Resource.DisplayName)), iCred);
+
                 if (TFSPicker.IsBasicAuth) tpc.ClientCredentials = new TfsClientCredentials(new BasicAuthCredential(iCred));
 
                 WorkItemStore workItemStore = (WorkItemStore)tpc.GetService(typeof(WorkItemStore));
@@ -771,7 +832,7 @@ namespace TFSPicker
                 if (queryResults.Count >= 1)
                 {
                     var item = queryResults[0];
-                    
+
                     try
                     {
                         TswaClientHyperlinkService hyperlinkService = (TswaClientHyperlinkService)tpc.GetService(typeof(TswaClientHyperlinkService));
