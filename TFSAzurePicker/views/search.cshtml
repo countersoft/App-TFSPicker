@@ -1,0 +1,56 @@
+﻿@using System.Web;
+@using TFSAzurePicker;
+@model Dictionary<string, TfsPickerItem>
+
+    <script type="text/javascript" src="~/assets/scripts/apps/@TfsAzureConstants.AppId/tfsapp.js"></script>
+
+    <br><br />
+
+    @if (Model != null && Model.Count > 0)
+    {
+        <table id="table-search-tfs" class="cs-properties">
+            <tbody>
+                <tr>
+                    <th></th>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Collection</th>
+                </tr>
+                @foreach (var tfs in Model)
+                {
+                    <tr class='tfs-@tfs.Value.Id'>
+                        <td id="@tfs.Value.Id"> @Html.CheckBox("SelectTFS", false, new { @class = "fancy" })</td>
+                        <td><a target="_blank" href="@tfs.Key">@tfs.Value.Id</a></td>
+                        <td>@tfs.Value.TypeName</td>
+                        <td>@tfs.Value.Title</td>
+                        <td>@Html.Raw(tfs.Value.Description)</td>
+                        <td>@tfs.Value.ProjectName</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <div>No Results Found</div>
+    }
+    <br><br />
+
+    <div>
+        <input type='button' class='button-primary' title='Add TFS' value='Add' id='tfs-add'>
+    </div>
+
+    <script type="text/javascript">
+
+        gemini_ui.fancyInputs('#table-search-tfs .fancy');
+
+        tfsSearch.init(gemini_item.issueId, '@TfsAzureConstants.AppId', '@TfsAzureConstants.ControlId');
+
+        tfsSearch.add(gemini_item.issueId);
+
+        tfsSearch.deletetfs(gemini_item.issueId);
+
+        //# sourceURL=tfssearch.js
+    </script>

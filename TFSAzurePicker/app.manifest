@@ -1,0 +1,12 @@
+﻿<app>
+    <guid>3af0b23d-177f-43f4-b663-12368289f3c2</guid>
+    <name>TFS Azure Picker</name>
+    <description>TFS Azure Picker</description>
+    <version-major>7</version-major>
+    <version-minor>0</version-minor>
+    <version-patch>0</version-patch>
+    <publisher>Countersoft</publisher>
+    <released>2021-05-28T09:00:00Z</released>
+    <javascript></javascript>
+    <debug>true</debug>
+</app>
