@@ -1,0 +1,86 @@
+﻿@using System.Web.Mvc.Html;
+@using System.Linq;
+@using Countersoft.Gemini.Models;
+@using Countersoft.Gemini;
+@using System.Linq
+@using TFSAzurePicker;
+
+<div id="app-tfspicker">
+    @if ( Countersoft.Gemini.GeminiApp.LicenseSummary.IsGeminiTrial() || Countersoft.Gemini.GeminiApp.GeminiLicense.IsFree )
+    {
+        <div class="clearfix"></div>
+        <div>
+            <img src="~/assets/images/empty-state/no-tfspicker.png" />
+        </div>
+    }
+
+    @if ( Model.NoOAuthClient )
+    {
+        <div id="app-tfspicker-error" class="error">
+            No OAuth clients configured. Please <a href="@Model.Url">configure</a> Configuration | System | Authentications | OAuth
+        </div>
+    }
+
+    else
+    {
+        <div class="margin-top-20">
+            <div id="app-tfspicker-error" class="error"></div>
+            <form id='authentication_form' action='@Model.Url' method='post'>
+                <h2>Build Azure Url</h2>
+                <p>https://dev.azure.com/{organisation}</p>
+                <br />
+                https://dev.azure.com/<input type='text' class='margin-bottom-5 required' name='organisation' placeholder='Organisation Name' id='organisation' /> 
+                @*<input type='text' class='margin-bottom-5 required' name='projectname' placeholder='Project Name' id='project' />*@ 
+                <input type='button' class='button-primary button-small' name='oauth_login' id='oauth_login' value='OAuth Login' />
+            </form>
+        </div>
+    }
+
+
+</div>
+
+<script type="text/javascript">
+    var oauthWindow;
+    var inAuth = false;
+    $(document).off('click', "#app-tfspicker #authentication_form #oauth_login")
+        .on('click', "#app-tfspicker #authentication_form #oauth_login", function (e) {
+
+            if (!$("#app-tfspicker #authentication_form").valid()) {
+                return;
+            }
+
+            gemini_ajax.postCall('apps/tfsazurepicker/saveinstance', '', function (response) {
+                // ONCE SAVED, PROMPT FOR OAUTH CREDENTIALS FLOW
+                console.log("saveinstance Response", response);
+                console.log("url", '@Model.Url');
+                if (response.success) {
+                    inAuth = true;
+                    oauthWindow = window.open('@Html.Raw(Model.Url)', "oauthpopup", "menubar=no,height=600,width=800,status=no,top=200,left=200");
+                    window.setTimeout(handleOauthRefresh, 5000); //5 seconds until first check
+                } else {
+                    console.warn("unable to save TFS settings");
+                }
+                
+            }, function (response) {
+                    gemini_popup.toast(response.Result);
+            }, 
+                $(this).parents("form:eq(0)").serialize(), null, true)
+
+            
+        });
+
+
+    function handleOauthRefresh() {
+        if (!inAuth) return;
+        if (oauthWindow.closed) {
+            inAuth = false;
+
+            console.log("issue id is ", @Model.IssueId);
+            gemini_item.getAppControlValue(@Model.IssueId, '@TfsAzureConstants.AppId', '@TfsAzureConstants.ControlId', 'login');
+        }
+        window.setTimeout(handleOauthRefresh, 500); //0.5 seconds thereafter to check
+    }
+
+    if ($('#app-tfspicker-error').text() == '') $('#app-tfspicker-error').hide();
+    //# sourceURL=tfsAuthentication.js
+</script>
